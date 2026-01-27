@@ -62,7 +62,7 @@ with col_info:
 st.markdown("---")
 
 # 6. Main Tabs
-tab1, tab2, tab3 = st.tabs(["MARKET_OVERVIEW", "TECHNICAL_DEEP_DIVE", "INTELLIGENCE_LAYER"])
+tab1, tab2, tab3 = st.tabs(["MARKET OVERVIEW", "TECHNICAL DEEP DIVE", "INTELLIGENCE LAYER"])
 
 with tab1:
     col1, col2 = st.columns([2, 1])

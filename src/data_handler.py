@@ -112,7 +112,8 @@ class MarketData:
                 link = item.get("link", "")
                 
                 # yfinance sometimes returns UUIDs as titles or None
-                if not title: title = "Market Update"
+                if not title or title == "No Headline":
+                    continue # Skip empty news items
                 
                 formatted_news.append({
                     "title": title,
@@ -120,6 +121,10 @@ class MarketData:
                     "overall_sentiment_label": "Unknown",
                     "url": link
                 })
+            
+            if not formatted_news:
+                return [] # Return empty if no valid news found
+                
             return formatted_news[:5]
         except Exception as e:
             return []

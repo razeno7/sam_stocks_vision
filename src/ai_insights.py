@@ -8,16 +8,14 @@ class GeminiAnalyst:
             st.error("Gemini API Key is missing.")
             return
         genai.configure(api_key=api_key)
-        # We don't fix the model in init anymore, we accept dynamic selection
-        
     def _try_generate(self, model_name, prompt):
         """Attempts to generate content with a specific model."""
         try:
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(prompt)
-            return response.text
+            return response.text, None
         except Exception as e:
-            return None
+            return None, str(e)
 
     def analyze_news(self, ticker, news_items):
         """
@@ -49,27 +47,28 @@ class GeminiAnalyst:
         SUMMARY: [Text]
         """
         
-        # Candidate models to try in order (Updated based on user logs)
+        # Candidate models - Prioritize exact matches from user logs
         candidates = [
-            'gemini-2.0-flash',
-            'gemini-2.5-flash',
-            'gemini-flash-latest',
-            'gemini-1.5-flash',
-            'gemini-pro',
+            'models/gemini-2.5-flash',
             'models/gemini-2.0-flash',
-            'models/gemini-2.5-flash'
+            'gemini-2.0-flash',
+            'gemini-1.5-flash',
+            'models/gemini-1.5-flash'
         ]
         
+        last_error = "No models tried"
         for model_name in candidates:
-            result = self._try_generate(model_name, prompt)
+            result, error = self._try_generate(model_name, prompt)
             if result:
                 return result
+            if error:
+                last_error = error
         
-        # If all failed, try to list models to give debug info
+        # If all failed, give detailed debug info
         try:
             available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            debug_msg = f"Available models on your key: {', '.join(available)}"
+            debug_msg = f"Last logic error: {last_error} | Available on key: {', '.join(available)}"
         except Exception as e:
-            debug_msg = f"Could not list models: {e}"
+            debug_msg = f"Could not list models: {e}. Last error: {last_error}"
 
         return f"AI Generation Failed. {debug_msg}", "Unknown"

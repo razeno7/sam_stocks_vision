@@ -9,7 +9,7 @@ class MarketData:
         # Note: yfinance does not require an API key for market data
         
     @st.cache_data(ttl=600)  # Cache for 10 minutes
-    def get_candlestick_data(self, symbol):
+    def get_candlestick_data(_self, symbol):
         """Fetches daily data using yfinance."""
         try:
             # yfinance tickers for futures often have =F, e.g., GC=F for Gold.
@@ -44,10 +44,10 @@ class MarketData:
             return pd.DataFrame()
 
     @st.cache_data(ttl=600)
-    def get_rsi(self, symbol):
+    def get_rsi(_self, symbol):
         """Calculates RSI (14) locally using yfinance data."""
         try:
-            df = self.get_candlestick_data(symbol)
+            df = _self.get_candlestick_data(symbol)
             if df.empty or len(df) < 15:
                 return pd.DataFrame()
             
@@ -65,13 +65,13 @@ class MarketData:
             return pd.DataFrame()
 
     @st.cache_data(ttl=900)  # Cache news for 15 minutes
-    def get_news_sentiment(self, symbol):
+    def get_news_sentiment(_self, symbol):
         """
         Fetches news sentiment from Alpha Vantage.
         Returns a list of news items (dictionaries).
         """
         # Alpha Vantage News is still one of the best free sources for structured sentiment.
-        url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={symbol}&sort=LATEST&limit=5&apikey={self.api_key}"
+        url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={symbol}&sort=LATEST&limit=5&apikey={_self.api_key}"
         try:
             r = requests.get(url)
             data = r.json()

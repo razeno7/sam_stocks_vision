@@ -1,0 +1,6 @@
+streamlit
+pandas
+plotly
+alpha_vantage
+google-generativeai
+requests

@@ -4,3 +4,4 @@ plotly
 alpha_vantage
 google-generativeai
 requests
+yfinance

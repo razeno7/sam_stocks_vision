@@ -7,9 +7,33 @@ class GeminiAnalyst:
             st.error("Gemini API Key is missing.")
             return
         genai.configure(api_key=api_key)
-        # Try to use the latest Flash model, fallback will be handled by exception if needed
-        # Switching to gemini-pro as it is the most stable and widely available model
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.model = self._get_best_model()
+
+    def _get_best_model(self):
+        """
+        Iterates through known model names to find one that works.
+        """
+        candidates = [
+            'gemini-1.5-flash',
+            'gemini-1.5-flash-latest',
+            'gemini-1.5-pro',
+            'gemini-1.5-pro-latest',
+            'gemini-1.0-pro',
+            'gemini-pro'
+        ]
+        
+        # Method 1: Try to look for them in list_models (most reliable)
+        try:
+            available_models = [m.name.replace('models/', '') for m in genai.list_models()]
+            for candle in candidates:
+                if candle in available_models:
+                    return genai.GenerativeModel(candle)
+        except Exception as e:
+            print(f"List models failed: {e}")
+
+        # Method 2: Blind trial (fallback)
+        # We return the most likely to work: 1.5 Flash
+        return genai.GenerativeModel('gemini-1.5-flash')
 
     def analyze_news(self, ticker, news_items):
         """
@@ -26,25 +50,24 @@ class GeminiAnalyst:
             news_text += f"- {title}: {summary}\n"
 
         prompt = f"""
-        You are a senior financial analyst. Analyze the following recent news for {ticker}.
+        You are a senior financial analyst acting as a signal generator for a high-frequency trading terminal. 
+        Analyze the following news for {ticker}.
         
-        News:
+        News Data:
         {news_text}
         
-        Task:
-        1. Provide a concise summary (max 3 bullet points).
-        2. Determine the overall short-term sentiment based ONLY on these news items.
+        Directives:
+        1. Synthesize the news into a single, dense paragraph of max 50 words. Focus on hard data and market impact.
+        2. Assign a sentiment score from -100 (Bearish) to +100 (Bullish).
         
-        Format your response exactly as:
-        SENTIMENT: [BULLISH/BEARISH/NEUTRAL]
-        SUMMARY:
-        - [Point 1]
-        - [Point 2]
+        Output format:
+        SENTIMENT_SCORE: [Number]
+        SUMMARY: [Text]
         """
         
         try:
             response = self.model.generate_content(prompt)
             return response.text
         except Exception as e:
-            st.error(f"Error generating AI insights: {e}")
-            return "Error generating analysis.", "Unknown"
+            # st.error(f"Error generating AI insights: {e}")
+            return f"AI Analysis Unavailable: {str(e)[:100]}...", "Unknown"

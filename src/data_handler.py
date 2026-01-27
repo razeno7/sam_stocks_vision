@@ -12,29 +12,17 @@ class MarketData:
     def get_candlestick_data(_self, symbol):
         """Fetches daily data using yfinance."""
         try:
-            # yfinance tickers for futures often have =F, e.g., GC=F for Gold.
-            # We try the symbol as is.
             ticker = yf.Ticker(symbol)
-            # Fetch 1 year of data to ensure enough for RSI and charts
             data = ticker.history(period="1y")
             
             if data.empty:
                 return pd.DataFrame()
 
-            # Ensure columns are Title Case (Open, High, Low, Close, Volume)
-            # yfinance usually returns Title Case by default or proper case.
-            # Standardize just in case.
             data = data.rename(columns={
-                'Open': 'Open',
-                'High': 'High',
-                'Low': 'Low',
-                'Close': 'Close',
-                'Volume': 'Volume',
+                'Open': 'Open', 'High': 'High', 'Low': 'Low', 'Close': 'Close', 'Volume': 'Volume',
             })
             
-            # Ensure index is datetime
             data.index = pd.to_datetime(data.index)
-            # Remove timezone info if present for cleaner display
             if data.index.tz is not None:
                 data.index = data.index.tz_localize(None)
                 
@@ -49,6 +37,7 @@ class MarketData:
         try:
             df = _self.get_candlestick_data(symbol)
             if df.empty or len(df) < 15:
+                # Fallback to empty df if not enough data
                 return pd.DataFrame()
             
             delta = df['Close'].diff()
@@ -57,31 +46,72 @@ class MarketData:
             
             rs = gain / loss
             df['RSI'] = 100 - (100 / (1 + rs))
-            
-            # Return last rows mainly, or full df
             return df[['RSI']].dropna()
         except Exception as e:
-            st.warning(f"Error calculating RSI for {symbol}: {e}")
             return pd.DataFrame()
 
-    @st.cache_data(ttl=900)  # Cache news for 15 minutes
+    @st.cache_data(ttl=600)
+    def get_technical_indicators(_self, symbol):
+        """Calculates MACD and Bollinger Bands."""
+        df = _self.get_candlestick_data(symbol)
+        if df.empty: return pd.DataFrame()
+        
+        # MACD
+        df['EMA12'] = df['Close'].ewm(span=12, adjust=False).mean()
+        df['EMA26'] = df['Close'].ewm(span=26, adjust=False).mean()
+        df['MACD'] = df['EMA12'] - df['EMA26']
+        df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+        
+        # Bollinger Bands
+        df['SMA20'] = df['Close'].rolling(window=20).mean()
+        df['STD20'] = df['Close'].rolling(window=20).std()
+        df['BB_Upper'] = df['SMA20'] + (df['STD20'] * 2)
+        df['BB_Lower'] = df['SMA20'] - (df['STD20'] * 2)
+        
+        return df.tail(100)
+
+    @st.cache_data(ttl=3600) # Cache info for 1 hour
+    def get_company_info(_self, symbol):
+        """Fetches company profile data."""
+        try:
+            ticker = yf.Ticker(symbol)
+            info = ticker.info
+            # Safe extraction with defaults
+            def format_large_num(num):
+                if not isinstance(num, (int, float)): return "N/A"
+                if num >= 1e12: return f"{num/1e12:.2f}T"
+                if num >= 1e9: return f"{num/1e9:.2f}B"
+                if num >= 1e6: return f"{num/1e6:.2f}M"
+                return f"{num:.2f}"
+
+            return {
+                "name": info.get("shortName", symbol),
+                "sector": info.get("sector", "Unknown"),
+                "industry": info.get("industry", "Unknown"),
+                "marketCap": format_large_num(info.get("marketCap", 0)),
+                "peRatio": f"{info.get('trailingPE', 0):.2f}",
+                "beta": f"{info.get('beta', 0):.2f}",
+                "dividend": f"{info.get('dividendYield', 0)*100:.2f}%" if info.get('dividendYield') else "N/A",
+                "summary": info.get("longBusinessSummary", "No summary available.")
+            }
+        except Exception:
+            return {}
+
+    @st.cache_data(ttl=900)
     def get_news_sentiment(_self, symbol):
         """
-        Fetches news sentiment from Alpha Vantage.
-        Returns a list of news items (dictionaries).
+        Fetches news from yfinance to avoid Alpha Vantage rate limits.
         """
-        # Alpha Vantage News is still one of the best free sources for structured sentiment.
-        url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={symbol}&sort=LATEST&limit=5&apikey={_self.api_key}"
         try:
-            r = requests.get(url)
-            data = r.json()
-            if "feed" in data:
-                return data["feed"]
-            else:
-                # Fallback or error handling
-                if "Information" in data:
-                    st.warning(f"Alpha Vantage Limit: {data['Information']}")
-                return []
+            ticker = yf.Ticker(symbol)
+            news = ticker.news
+            formatted_news = []
+            for item in news:
+                formatted_news.append({
+                    "title": item.get("title"),
+                    "summary": item.get("publisher", "") + ": " + item.get("link", ""),
+                    "overall_sentiment_label": "Unknown" 
+                })
+            return formatted_news[:5]
         except Exception as e:
-            st.error(f"Error fetching news for {symbol}: {e}")
             return []

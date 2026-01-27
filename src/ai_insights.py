@@ -49,13 +49,15 @@ class GeminiAnalyst:
         SUMMARY: [Text]
         """
         
-        # Candidate models to try in order
+        # Candidate models to try in order (Updated based on user logs)
         candidates = [
+            'gemini-2.0-flash',
+            'gemini-2.5-flash',
+            'gemini-flash-latest',
             'gemini-1.5-flash',
-            'gemini-1.5-flash-latest',
-            'gemini-1.5-pro',
             'gemini-pro',
-            'models/gemini-1.5-flash'
+            'models/gemini-2.0-flash',
+            'models/gemini-2.5-flash'
         ]
         
         for model_name in candidates:

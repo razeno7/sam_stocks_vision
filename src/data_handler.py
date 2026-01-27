@@ -107,10 +107,18 @@ class MarketData:
             news = ticker.news
             formatted_news = []
             for item in news:
+                title = item.get("title", "No Headline")
+                publisher = item.get("publisher", "Source Unknown") 
+                link = item.get("link", "")
+                
+                # yfinance sometimes returns UUIDs as titles or None
+                if not title: title = "Market Update"
+                
                 formatted_news.append({
-                    "title": item.get("title"),
-                    "summary": item.get("publisher", "") + ": " + item.get("link", ""),
-                    "overall_sentiment_label": "Unknown" 
+                    "title": title,
+                    "summary": f"{publisher}",
+                    "overall_sentiment_label": "Unknown",
+                    "url": link
                 })
             return formatted_news[:5]
         except Exception as e:

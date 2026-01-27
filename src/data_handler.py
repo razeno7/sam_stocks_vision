@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import requests
+import xml.etree.ElementTree as ET
 
 class MarketData:
     def __init__(self, api_key):
@@ -97,7 +98,7 @@ class MarketData:
         except Exception:
             return {}
 
-import xml.etree.ElementTree as ET
+
 
     def _get_google_news(self, symbol):
         """Fallback: Fetch news from Google News RSS."""

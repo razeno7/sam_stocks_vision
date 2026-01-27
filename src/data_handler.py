@@ -85,14 +85,34 @@ class MarketData:
                 if num >= 1e6: return f"{num/1e6:.2f}M"
                 return f"{num:.2f}"
 
+            # Fallback to fast_info for critical metrics if info fails
+            fast = ticker.fast_info
+            
+            def get_val(key, fast_key=None, default="N/A"):
+                val = info.get(key)
+                if val: return val
+                if fast_key and hasattr(fast, fast_key):
+                    return fast[fast_key]
+                return default
+
+            mkt_cap = format_large_num(get_val("marketCap", "market_cap", 0))
+            high_52 = get_val("fiftyTwoWeekHigh", "year_high", "N/A")
+            low_52 = get_val("fiftyTwoWeekLow", "year_low", "N/A")
+            
+            # Format high/low if they are numbers
+            if isinstance(high_52, (int, float)): high_52 = f"{high_52:.2f}"
+            if isinstance(low_52, (int, float)): low_52 = f"{low_52:.2f}"
+
             return {
                 "name": info.get("shortName", symbol),
                 "sector": info.get("sector", "Unknown"),
                 "industry": info.get("industry", "Unknown"),
-                "marketCap": format_large_num(info.get("marketCap", 0)),
+                "marketCap": mkt_cap,
                 "peRatio": f"{info.get('trailingPE', 0):.2f}",
                 "beta": f"{info.get('beta', 0):.2f}",
                 "dividend": f"{info.get('dividendYield', 0)*100:.2f}%" if info.get('dividendYield') else "N/A",
+                "high52": high_52,
+                "low52": low_52,
                 "summary": info.get("longBusinessSummary", "No summary available.")
             }
         except Exception:

@@ -47,28 +47,28 @@ class GeminiAnalyst:
         SUMMARY: [Text]
         """
         
-        # Candidate models - Prioritize exact matches from user logs
+        # Candidate models - Prioritize exact matches from debug output
         candidates = [
             'models/gemini-2.5-flash',
             'models/gemini-2.0-flash',
+            'models/gemini-1.5-flash', 
             'gemini-2.0-flash',
-            'gemini-1.5-flash',
-            'models/gemini-1.5-flash'
+            'gemini-1.5-flash'
         ]
         
-        last_error = "No models tried"
+        errors = []
         for model_name in candidates:
             result, error = self._try_generate(model_name, prompt)
             if result:
                 return result
             if error:
-                last_error = error
+                errors.append(f"{model_name}: {error}")
         
         # If all failed, give detailed debug info
         try:
             available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            debug_msg = f"Last logic error: {last_error} | Available on key: {', '.join(available)}"
+            debug_msg = f"ALL ATTEMPTS FAILED. Errors: {' | '.join(errors)} | CONST_AVAILABLE: {', '.join(available)}"
         except Exception as e:
-            debug_msg = f"Could not list models: {e}. Last error: {last_error}"
+            debug_msg = f"Could not list models: {e}. Last error: {errors[-1] if errors else 'None'}"
 
-        return f"AI Generation Failed. {debug_msg}", "Unknown"
+        return f"AI Generation Failed. {debug_msg} \n\n(Try refreshing permissions or checking API key quotas.)", "Unknown"

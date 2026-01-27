@@ -8,11 +8,8 @@ class GeminiAnalyst:
             return
         genai.configure(api_key=api_key)
         # Try to use the latest Flash model, fallback will be handled by exception if needed
-        # Common valid names: gemini-1.5-flash, gemini-1.5-flash-latest, gemini-pro
-        try:
-            self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
-        except:
-            self.model = genai.GenerativeModel('gemini-pro')
+        # Switching to gemini-pro as it is the most stable and widely available model
+        self.model = genai.GenerativeModel('gemini-pro')
 
     def analyze_news(self, ticker, news_items):
         """

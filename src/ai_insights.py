@@ -7,7 +7,12 @@ class GeminiAnalyst:
             st.error("Gemini API Key is missing.")
             return
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        # Try to use the latest Flash model, fallback will be handled by exception if needed
+        # Common valid names: gemini-1.5-flash, gemini-1.5-flash-latest, gemini-pro
+        try:
+            self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        except:
+            self.model = genai.GenerativeModel('gemini-pro')
 
     def analyze_news(self, ticker, news_items):
         """

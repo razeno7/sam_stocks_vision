@@ -97,34 +97,64 @@ class MarketData:
         except Exception:
             return {}
 
-    @st.cache_data(ttl=900)
-    def get_news_sentiment(_self, symbol):
-        """
-        Fetches news from yfinance to avoid Alpha Vantage rate limits.
-        """
+import xml.etree.ElementTree as ET
+
+    def _get_google_news(self, symbol):
+        """Fallback: Fetch news from Google News RSS."""
         try:
-            ticker = yf.Ticker(symbol)
-            news = ticker.news
-            formatted_news = []
-            for item in news:
-                title = item.get("title", "No Headline")
-                publisher = item.get("publisher", "Source Unknown") 
-                link = item.get("link", "")
+            url = f"https://news.google.com/rss/search?q={symbol}+stock&hl=en-US&gl=US&ceid=US:en"
+            r = requests.get(url, timeout=5)
+            root = ET.fromstring(r.text)
+            
+            news_items = []
+            for item in root.findall('./channel/item')[:5]:
+                title = item.find('title').text
+                link = item.find('link').text
+                pubDate = item.find('pubDate').text
                 
-                # yfinance sometimes returns UUIDs as titles or None
-                if not title or title == "No Headline":
-                    continue # Skip empty news items
-                
-                formatted_news.append({
+                news_items.append({
                     "title": title,
-                    "summary": f"{publisher}",
+                    "summary": f"Published: {pubDate}", 
                     "overall_sentiment_label": "Unknown",
                     "url": link
                 })
-            
-            if not formatted_news:
-                return [] # Return empty if no valid news found
-                
-            return formatted_news[:5]
+            return news_items
         except Exception as e:
+            # st.warning(f"Google News Fallback Failed: {e}")
             return []
+
+    @st.cache_data(ttl=900)
+    def get_news_sentiment(_self, symbol):
+        """
+        Fetches news from yfinance, falls back to Google News RSS if needed.
+        """
+        news_items = []
+        
+        # 1. Try yfinance
+        try:
+            ticker = yf.Ticker(symbol)
+            yf_news = ticker.news
+            for item in yf_news:
+                title = item.get("title")
+                publisher = item.get("publisher", "Unknown") 
+                link = item.get("link", "")
+                
+                if not title or title == "No Headline": 
+                    continue
+                
+                news_items.append({
+                    "title": title,
+                    "summary": f"Source: {publisher}",
+                    "overall_sentiment_label": "Unknown",
+                    "url": link
+                })
+        except Exception:
+            pass
+            
+        # 2. Fallback to Google News if yfinance gave weak results
+        if len(news_items) < 2:
+            google_news = _self._get_google_news(symbol)
+            if google_news:
+                return google_news
+        
+        return news_items[:5]
